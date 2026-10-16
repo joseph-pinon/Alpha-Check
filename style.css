@@ -9,6 +9,11 @@
   --accent: #1769e0;
   --accent-hover: #1257bb;
   --accent-foreground: #ffffff;
+  --guide: #8a96a5;
+  --bullseye: #d7263d;
+  --target: #159447;
+  --guess: #1769e0;
+  --overlay-background: rgb(255 255 255 / 88%);
 }
 
 :root[data-theme="dark"] {
@@ -22,10 +27,19 @@
   --accent: #4b8ff7;
   --accent-hover: #6da5f8;
   --accent-foreground: #08111f;
+  --guide: #778292;
+  --bullseye: #ff5a6e;
+  --target: #4bd37b;
+  --guess: #65a1ff;
+  --overlay-background: rgb(23 26 31 / 88%);
 }
 
 * {
   box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 html,
@@ -120,6 +134,25 @@ button:disabled {
   opacity: 0.55;
 }
 
+.icon-button {
+  display: inline-grid;
+  width: 2rem;
+  min-width: 2rem;
+  padding: 0;
+  place-items: center;
+  border-color: var(--border);
+  color: var(--foreground);
+  background: var(--control-background);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.icon-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--control-background);
+}
+
 #session-status {
   min-width: 6.5rem;
   color: var(--muted);
@@ -128,11 +161,75 @@ button:disabled {
   white-space: nowrap;
 }
 
+.game-area {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 canvas {
   display: block;
   width: 100%;
   height: 100%;
   background: var(--canvas-background);
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+
+.canvas-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.question-prompt,
+.game-message {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  background: var(--overlay-background);
+  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 10%);
+  backdrop-filter: blur(0.3rem);
+  transform: translateX(-50%);
+}
+
+.question-prompt {
+  top: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.game-message {
+  top: 50%;
+  min-width: min(20rem, calc(100% - 2rem));
+  padding: 1rem 1.25rem;
+  border-radius: 0.625rem;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  white-space: pre-line;
+}
+
+.game-message.countdown {
+  min-width: 0;
+  padding: 0.75rem 1.25rem;
+  font-size: clamp(3rem, 12vw, 7rem);
+  font-weight: 750;
+  line-height: 1;
+}
+
+.next-button {
+  position: absolute;
+  z-index: 2;
+  top: calc(50% + 4.25rem);
+  left: 50%;
+  pointer-events: auto;
+  transform: translateX(-50%);
 }
 
 @media (max-width: 56rem) {

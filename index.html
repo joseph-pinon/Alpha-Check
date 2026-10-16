@@ -25,25 +25,42 @@
           <select id="game-length"></select>
         </label>
 
+        <label for="difficulty">
+          Difficulty
+          <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="hard">Hard</option>
+            <option value="super-hard">Super Hard</option>
+          </select>
+        </label>
+
         <label id="custom-value-field" for="custom-value" hidden>
           <span id="custom-value-label">Seconds</span>
           <input id="custom-value" type="number" min="1" step="1" inputmode="numeric" />
         </label>
 
         <button id="play" type="button">Play</button>
-        <span id="session-status" role="status" aria-live="polite">Ready</span>
+        <span id="session-status" role="status" aria-live="polite" hidden></span>
 
-        <label for="theme">
-          Theme
-          <select id="theme">
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
+        <button
+          id="theme-toggle"
+          class="icon-button"
+          type="button"
+          aria-label="Theme: System"
+          title="Theme: System"
+        >
+          <span aria-hidden="true">◐</span>
+        </button>
       </div>
     </header>
 
-    <canvas id="canvas" aria-label="Game canvas"></canvas>
+    <main class="game-area">
+      <canvas id="canvas" aria-label="Game canvas"></canvas>
+      <div class="canvas-hud" aria-live="polite">
+        <div id="question-prompt" class="question-prompt" hidden></div>
+        <div id="game-message" class="game-message" hidden></div>
+        <button id="next-question" class="next-button" type="button" hidden>Next</button>
+      </div>
+    </main>
   </body>
 </html>
