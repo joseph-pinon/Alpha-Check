@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alpha Check</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Alpha Check</h1>
+
+      <div class="controls">
+        <label for="game-mode">
+          Mode
+          <select id="game-mode">
+            <option value="time">Time</option>
+            <option value="questions">Questions</option>
+          </select>
+        </label>
+
+        <label for="game-length">
+          <span id="game-length-label">Duration</span>
+          <select id="game-length"></select>
+        </label>
+
+        <label id="custom-value-field" for="custom-value" hidden>
+          <span id="custom-value-label">Seconds</span>
+          <input id="custom-value" type="number" min="1" step="1" inputmode="numeric" />
+        </label>
+
+        <button id="play" type="button">Play</button>
+        <span id="session-status" role="status" aria-live="polite">Ready</span>
+
+        <label for="theme">
+          Theme
+          <select id="theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <canvas id="canvas" aria-label="Game canvas"></canvas>
+  </body>
+</html>
