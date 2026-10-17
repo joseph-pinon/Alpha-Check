@@ -13,6 +13,7 @@
   --bullseye: #d7263d;
   --target: #159447;
   --guess: #1769e0;
+  --error-line: #d7263d;
   --overlay-background: rgb(255 255 255 / 88%);
 }
 
@@ -31,6 +32,7 @@
   --bullseye: #ff5a6e;
   --target: #4bd37b;
   --guess: #65a1ff;
+  --error-line: #ff5a6e;
   --overlay-background: rgb(23 26 31 / 88%);
 }
 
@@ -155,8 +157,13 @@ button:disabled {
 
 #session-status {
   min-width: 6.5rem;
-  color: var(--muted);
-  font-size: 0.8125rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--foreground);
+  background: var(--control-background);
+  font-size: 1rem;
+  font-weight: 700;
   text-align: center;
   white-space: nowrap;
 }
@@ -198,9 +205,9 @@ canvas {
 
 .question-prompt {
   top: 1rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.65rem 1rem;
   border-radius: 999px;
-  font-size: 0.875rem;
+  font-size: 1.5rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -221,6 +228,20 @@ canvas {
   font-size: clamp(3rem, 12vw, 7rem);
   font-weight: 750;
   line-height: 1;
+}
+
+.game-message.final-score {
+  padding: 1.5rem;
+  border: 2px solid var(--accent);
+  font-size: 1rem;
+}
+
+.final-score-value {
+  display: block;
+  margin: 0.65rem 0;
+  color: var(--accent);
+  font-size: clamp(1.75rem, 6vw, 2.5rem);
+  line-height: 1.1;
 }
 
 .next-button {

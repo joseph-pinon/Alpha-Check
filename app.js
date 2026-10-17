@@ -23,6 +23,8 @@ const PIXELS_PER_NM = CSS_PIXELS_PER_INCH / NM_PER_CSS_INCH;
 const MIN_RANGE_NM = 10;
 const DRAWING_MARGIN = 24;
 const COUNTDOWN_STEP_MS = 700;
+const PROMPT_SAFE_HALF_WIDTH = 90;
+const PROMPT_SAFE_BOTTOM = 90;
 
 const themes = ["system", "light", "dark"];
 const themeIcons = {
@@ -195,6 +197,20 @@ function questionFitsAtCenter(vector) {
     && y >= DRAWING_MARGIN && y <= canvasSize.height - DRAWING_MARGIN;
 }
 
+function pointClearsPrompt(point) {
+  const promptLeft = canvasSize.width / 2 - PROMPT_SAFE_HALF_WIDTH;
+  const promptRight = canvasSize.width / 2 + PROMPT_SAFE_HALF_WIDTH;
+  return point.x < promptLeft || point.x > promptRight || point.y > PROMPT_SAFE_BOTTOM;
+}
+
+function targetPoint(bullseye, vector) {
+  return { x: bullseye.x + vector.x, y: bullseye.y + vector.y };
+}
+
+function questionClearsPrompt(bullseye, vector) {
+  return pointClearsPrompt(bullseye) && pointClearsPrompt(targetPoint(bullseye, vector));
+}
+
 function createQuestion() {
   const difficulty = session.difficulty;
 
@@ -208,12 +224,13 @@ function createQuestion() {
     const vector = vectorFor(bearing, range);
 
     if (difficulty === "easy") {
-      if (!questionFitsAtCenter(vector)) continue;
+      const bullseye = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
+      if (!questionFitsAtCenter(vector) || !questionClearsPrompt(bullseye, vector)) continue;
 
       return {
         bearing,
         range,
-        bullseye: { x: canvasSize.width / 2, y: canvasSize.height / 2 },
+        bullseye,
         bullseyeRatio: { x: 0.5, y: 0.5 },
       };
     }
@@ -223,6 +240,8 @@ function createQuestion() {
 
     const x = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
     const y = bounds.minY + Math.random() * (bounds.maxY - bounds.minY);
+    if (!questionClearsPrompt({ x, y }, vector)) continue;
+
     return {
       bearing,
       range,
@@ -248,7 +267,8 @@ function reprojectQuestion() {
 
   if (session.difficulty === "easy") {
     question.bullseye = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
-    session.resizeBlocked = !questionFitsAtCenter(vector);
+    session.resizeBlocked = !questionFitsAtCenter(vector)
+      || !questionClearsPrompt(question.bullseye, vector);
   } else {
     const bounds = bullseyeBounds(vector);
     session.resizeBlocked = !bounds.valid;
@@ -260,6 +280,32 @@ function reprojectQuestion() {
         x: Math.min(bounds.maxX, Math.max(bounds.minX, preferredX)),
         y: Math.min(bounds.maxY, Math.max(bounds.minY, preferredY)),
       };
+
+      if (!questionClearsPrompt(question.bullseye, vector)) {
+        const promptLeft = canvasSize.width / 2 - PROMPT_SAFE_HALF_WIDTH;
+        const promptRight = canvasSize.width / 2 + PROMPT_SAFE_HALF_WIDTH;
+        const candidates = [
+          { x: promptLeft - DRAWING_MARGIN, y: question.bullseye.y },
+          { x: promptRight + DRAWING_MARGIN, y: question.bullseye.y },
+          { x: question.bullseye.x, y: PROMPT_SAFE_BOTTOM + DRAWING_MARGIN },
+          { x: promptLeft - DRAWING_MARGIN - vector.x, y: question.bullseye.y },
+          { x: promptRight + DRAWING_MARGIN - vector.x, y: question.bullseye.y },
+          { x: question.bullseye.x, y: PROMPT_SAFE_BOTTOM + DRAWING_MARGIN - vector.y },
+        ].map((point) => ({
+          x: Math.min(bounds.maxX, Math.max(bounds.minX, point.x)),
+          y: Math.min(bounds.maxY, Math.max(bounds.minY, point.y)),
+        })).filter((point) => questionClearsPrompt(point, vector));
+
+        if (candidates.length > 0) {
+          candidates.sort((first, second) => (
+            Math.hypot(first.x - preferredX, first.y - preferredY)
+            - Math.hypot(second.x - preferredX, second.y - preferredY)
+          ));
+          question.bullseye = candidates[0];
+        } else {
+          session.resizeBlocked = true;
+        }
+      }
     }
   }
 
@@ -280,6 +326,7 @@ function canvasColors() {
     bullseye: styles.getPropertyValue("--bullseye").trim(),
     target: styles.getPropertyValue("--target").trim(),
     guess: styles.getPropertyValue("--guess").trim(),
+    errorLine: styles.getPropertyValue("--error-line").trim(),
   };
 }
 
@@ -367,7 +414,17 @@ function drawGame() {
   drawMarker(context, question.bullseye, colors.bullseye, "bullseye");
 
   if (session.phase === "reveal") {
-    drawMarker(context, targetFor(question), colors.target, "target");
+    const target = targetFor(question);
+    context.save();
+    context.beginPath();
+    context.moveTo(target.x, target.y);
+    context.lineTo(question.guess.x, question.guess.y);
+    context.strokeStyle = colors.errorLine;
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
+
+    drawMarker(context, target, colors.target, "target");
     drawMarker(context, question.guess, colors.guess, "guess");
   }
 }
@@ -377,7 +434,10 @@ function updateOverlay() {
 
   const question = session.question;
   questionPrompt.hidden = !question;
-  if (question) questionPrompt.textContent = `Bearing ${question.bearing}° / Range ${question.range} nm`;
+  if (question) {
+    const bearing = String(question.bearing).padStart(3, "0");
+    questionPrompt.textContent = `${bearing}/${question.range}`;
+  }
 
   if (session.resizeBlocked) {
     gameMessage.classList.remove("countdown");
@@ -461,10 +521,11 @@ function startSession() {
 
   const mode = modeSelector.value;
   const value = selectedValue();
+  const difficulty = difficultySelector.value;
   session = {
     mode,
     value,
-    difficulty: difficultySelector.value,
+    difficulty,
     phase: "countdown",
     completed: 0,
     score: 0,
@@ -475,14 +536,20 @@ function startSession() {
   playButton.disabled = false;
   sessionStatus.hidden = false;
 
-  sessionStatus.textContent = "Get ready";
+  gameMessage.classList.remove("final-score");
   questionPrompt.hidden = true;
   nextButton.hidden = true;
-  runCountdown();
 
   window.dispatchEvent(new CustomEvent("alpha-check:start", {
-    detail: { mode, value, difficulty: session.difficulty },
+    detail: { mode, value, difficulty },
   }));
+
+  if (mode === "time") {
+    sessionStatus.textContent = "Get ready";
+    runCountdown();
+  } else {
+    beginActiveSession();
+  }
 }
 
 function clearSessionTimers() {
@@ -509,7 +576,15 @@ function finishSession(reason) {
   questionPrompt.hidden = true;
   nextButton.hidden = true;
   gameMessage.classList.remove("countdown");
-  gameMessage.textContent = `${reason}\nFinal score: ${endedSession.score.toFixed(2)}\nQuestions answered: ${endedSession.completed}`;
+  gameMessage.classList.add("final-score");
+  const reasonText = document.createElement("div");
+  const scoreText = document.createElement("strong");
+  const answeredText = document.createElement("div");
+  reasonText.textContent = reason;
+  scoreText.className = "final-score-value";
+  scoreText.textContent = `Final score: ${endedSession.score.toFixed(2)}`;
+  answeredText.textContent = `Questions answered: ${endedSession.completed}`;
+  gameMessage.replaceChildren(reasonText, scoreText, answeredText);
   gameMessage.hidden = false;
   validateSettings();
   drawGame();
