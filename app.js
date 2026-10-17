@@ -5,6 +5,12 @@ const themeIcon = themeToggle.querySelector("span");
 const modeSelector = document.querySelector("#game-mode");
 const lengthSelector = document.querySelector("#game-length");
 const difficultySelector = document.querySelector("#difficulty");
+const customDifficultySettings = document.querySelector("#custom-difficulty-settings");
+const rangeRingsInput = document.querySelector("#custom-range-rings");
+const bearingLinesInput = document.querySelector("#custom-bearing-lines");
+const bearingSpacingField = document.querySelector("#bearing-spacing-field");
+const bearingSpacingSelector = document.querySelector("#bearing-spacing");
+const centerBullseyeInput = document.querySelector("#custom-center-bullseye");
 const lengthLabel = document.querySelector("#game-length-label");
 const customField = document.querySelector("#custom-value-field");
 const customLabel = document.querySelector("#custom-value-label");
@@ -12,19 +18,21 @@ const customInput = document.querySelector("#custom-value");
 const playButton = document.querySelector("#play");
 const sessionStatus = document.querySelector("#session-status");
 const questionPrompt = document.querySelector("#question-prompt");
+const questionValue = document.querySelector("#question-value");
+const questionFeedback = document.querySelector("#question-feedback");
 const gameMessage = document.querySelector("#game-message");
 const nextButton = document.querySelector("#next-question");
 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
 
-// CSS defines one inch as 96 pixels. Change this value to tune the game scale.
-const NM_PER_CSS_INCH = 10;
+// Browsers define one CSS inch as 96 CSS pixels. Physical size may vary by display.
 const CSS_PIXELS_PER_INCH = 96;
-const PIXELS_PER_NM = CSS_PIXELS_PER_INCH / NM_PER_CSS_INCH;
+const CSS_INCHES_PER_10_NM = 1.5;
+const PIXELS_PER_NM = CSS_PIXELS_PER_INCH * CSS_INCHES_PER_10_NM / 10;
 const MIN_RANGE_NM = 10;
 const DRAWING_MARGIN = 24;
 const COUNTDOWN_STEP_MS = 700;
-const PROMPT_SAFE_HALF_WIDTH = 90;
-const PROMPT_SAFE_BOTTOM = 90;
+const PROMPT_SAFE_HALF_WIDTH = 260;
+const PROMPT_SAFE_BOTTOM = 130;
 
 const themes = ["system", "light", "dark"];
 const themeIcons = {
@@ -55,6 +63,27 @@ const modeSettings = {
       ["20", "20"],
       ["custom", "Custom"],
     ],
+  },
+};
+
+const difficultySettings = {
+  easy: {
+    rangeRings: true,
+    bearingLines: true,
+    bearingSpacing: 90,
+    centerBullseye: true,
+  },
+  hard: {
+    rangeRings: true,
+    bearingLines: false,
+    bearingSpacing: 90,
+    centerBullseye: false,
+  },
+  "super-hard": {
+    rangeRings: false,
+    bearingLines: false,
+    bearingSpacing: 90,
+    centerBullseye: false,
   },
 };
 
@@ -148,11 +177,36 @@ function selectedValue() {
   return Number(lengthSelector.value === "custom" ? customInput.value : lengthSelector.value);
 }
 
+function updateCustomDifficultyControls() {
+  const isCustom = difficultySelector.value === "custom";
+  customDifficultySettings.hidden = !isCustom;
+  difficultySelector.setAttribute("aria-expanded", String(isCustom));
+  bearingSpacingField.hidden = !bearingLinesInput.checked;
+  bearingSpacingSelector.disabled = !bearingLinesInput.checked || Boolean(session);
+}
+
+function selectedDifficultySettings() {
+  if (difficultySelector.value !== "custom") {
+    return { ...difficultySettings[difficultySelector.value] };
+  }
+
+  return {
+    rangeRings: rangeRingsInput.checked,
+    bearingLines: bearingLinesInput.checked,
+    bearingSpacing: Number(bearingSpacingSelector.value),
+    centerBullseye: centerBullseyeInput.checked,
+  };
+}
+
 function setSessionControlsDisabled(disabled) {
   modeSelector.disabled = disabled;
   lengthSelector.disabled = disabled;
   customInput.disabled = disabled;
   difficultySelector.disabled = disabled;
+  rangeRingsInput.disabled = disabled;
+  bearingLinesInput.disabled = disabled;
+  bearingSpacingSelector.disabled = disabled || !bearingLinesInput.checked;
+  centerBullseyeInput.disabled = disabled;
 }
 
 function formatTime(totalSeconds) {
@@ -212,10 +266,8 @@ function questionClearsPrompt(bullseye, vector) {
 }
 
 function createQuestion() {
-  const difficulty = session.difficulty;
-
   for (let attempt = 0; attempt < 500; attempt += 1) {
-    const bearing = randomInteger(0, 359);
+    const bearing = randomInteger(1, 360);
     const theoreticalMaximum = Math.floor(Math.hypot(canvasSize.width, canvasSize.height) / PIXELS_PER_NM);
 
     if (theoreticalMaximum < MIN_RANGE_NM) break;
@@ -223,7 +275,7 @@ function createQuestion() {
     const range = randomInteger(MIN_RANGE_NM, theoreticalMaximum);
     const vector = vectorFor(bearing, range);
 
-    if (difficulty === "easy") {
+    if (session.settings.centerBullseye) {
       const bullseye = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
       if (!questionFitsAtCenter(vector) || !questionClearsPrompt(bullseye, vector)) continue;
 
@@ -265,7 +317,7 @@ function reprojectQuestion() {
   const question = session.question;
   const vector = vectorFor(question.bearing, question.range);
 
-  if (session.difficulty === "easy") {
+  if (session.settings.centerBullseye) {
     question.bullseye = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
     session.resizeBlocked = !questionFitsAtCenter(vector)
       || !questionClearsPrompt(question.bullseye, vector);
@@ -361,7 +413,7 @@ function drawMarker(context, point, color, kind) {
 }
 
 function drawGuides(context, question, colors) {
-  if (session.difficulty === "super-hard") return;
+  if (!session.settings.rangeRings && !session.settings.bearingLines) return;
 
   const { x, y } = question.bullseye;
   context.save();
@@ -370,33 +422,72 @@ function drawGuides(context, question, colors) {
   context.lineWidth = 1;
   context.globalAlpha = 0.65;
 
-  const maximumRadius = Math.max(
-    Math.hypot(x, y),
-    Math.hypot(canvasSize.width - x, y),
-    Math.hypot(x, canvasSize.height - y),
-    Math.hypot(canvasSize.width - x, canvasSize.height - y),
-  );
+  if (session.settings.rangeRings) {
+    const maximumRadius = Math.max(
+      Math.hypot(x, y),
+      Math.hypot(canvasSize.width - x, y),
+      Math.hypot(x, canvasSize.height - y),
+      Math.hypot(canvasSize.width - x, canvasSize.height - y),
+    );
 
-  for (let range = 10; range * PIXELS_PER_NM <= maximumRadius; range += 10) {
-    context.beginPath();
-    context.arc(x, y, range * PIXELS_PER_NM, 0, Math.PI * 2);
-    context.stroke();
+    for (let range = 10; range * PIXELS_PER_NM <= maximumRadius; range += 10) {
+      context.beginPath();
+      context.arc(x, y, range * PIXELS_PER_NM, 0, Math.PI * 2);
+      context.stroke();
+    }
   }
 
-  if (session.difficulty === "easy") {
+  if (session.settings.bearingLines) {
+    const lineEnds = [];
     context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, canvasSize.height);
-    context.moveTo(0, y);
-    context.lineTo(canvasSize.width, y);
+    for (
+      let bearing = session.settings.bearingSpacing;
+      bearing <= 360;
+      bearing += session.settings.bearingSpacing
+    ) {
+      const radians = bearing * Math.PI / 180;
+      const directionX = Math.sin(radians);
+      const directionY = -Math.cos(radians);
+      const horizontalDistance = directionX > 0
+        ? (canvasSize.width - x) / directionX
+        : directionX < 0 ? -x / directionX : Infinity;
+      const verticalDistance = directionY > 0
+        ? (canvasSize.height - y) / directionY
+        : directionY < 0 ? -y / directionY : Infinity;
+      const distance = Math.min(horizontalDistance, verticalDistance);
+
+      context.moveTo(x, y);
+      const end = {
+        x: x + directionX * distance,
+        y: y + directionY * distance,
+      };
+      context.lineTo(end.x, end.y);
+      lineEnds.push({ bearing, directionX, directionY, ...end });
+    }
     context.stroke();
 
-    context.globalAlpha = 0.9;
-    context.font = "12px system-ui, sans-serif";
-    context.fillText("0°", x + 6, 16);
-    context.fillText("90°", canvasSize.width - 30, y - 7);
-    context.fillText("180°", x + 6, canvasSize.height - 8);
-    context.fillText("270°", 6, y - 7);
+    if (session.difficulty === "custom" || session.settings.bearingSpacing === 90) {
+      context.globalAlpha = 0.9;
+      context.font = session.settings.bearingSpacing === 15
+        ? "10px system-ui, sans-serif"
+        : "12px system-ui, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+
+      for (const lineEnd of lineEnds) {
+        const labelX = Math.min(
+          canvasSize.width - 20,
+          Math.max(20, lineEnd.x - lineEnd.directionX * 16),
+        );
+        const labelY = Math.min(
+          canvasSize.height - 10,
+          Math.max(10, lineEnd.y - lineEnd.directionY * 14),
+        );
+
+        const bearingLabel = String(lineEnd.bearing).padStart(3, "0");
+        context.fillText(`${bearingLabel}°`, labelX, labelY);
+      }
+    }
   }
 
   context.restore();
@@ -436,24 +527,30 @@ function updateOverlay() {
   questionPrompt.hidden = !question;
   if (question) {
     const bearing = String(question.bearing).padStart(3, "0");
-    questionPrompt.textContent = `${bearing}/${question.range}`;
+    questionValue.textContent = `${bearing}/${question.range}`;
   }
 
   if (session.resizeBlocked) {
     gameMessage.classList.remove("countdown");
     gameMessage.textContent = "The play area is too small for this question.\nEnlarge the window to continue.";
     gameMessage.hidden = false;
+    questionPrompt.classList.remove("reveal");
+    questionFeedback.hidden = true;
     nextButton.hidden = true;
     return;
   }
 
   if (session.phase === "question") {
+    questionPrompt.classList.remove("reveal");
+    questionFeedback.hidden = true;
     gameMessage.hidden = true;
     nextButton.hidden = true;
   } else if (session.phase === "reveal") {
     gameMessage.classList.remove("countdown");
-    gameMessage.textContent = `Error: ${question.error.toFixed(2)} nm\nQuestion score: ${question.penalty.toFixed(2)}`;
-    gameMessage.hidden = false;
+    gameMessage.hidden = true;
+    questionPrompt.classList.add("reveal");
+    questionFeedback.textContent = `Error: ${question.error.toFixed(2)} nm · Score: ${question.penalty.toFixed(2)}`;
+    questionFeedback.hidden = false;
     nextButton.textContent = session.mode === "questions" && session.completed >= session.value
       ? "View total"
       : "Next";
@@ -522,10 +619,12 @@ function startSession() {
   const mode = modeSelector.value;
   const value = selectedValue();
   const difficulty = difficultySelector.value;
+  const settings = selectedDifficultySettings();
   session = {
     mode,
     value,
     difficulty,
+    settings,
     phase: "countdown",
     completed: 0,
     score: 0,
@@ -537,11 +636,13 @@ function startSession() {
   sessionStatus.hidden = false;
 
   gameMessage.classList.remove("final-score");
+  questionPrompt.classList.remove("reveal");
+  questionFeedback.hidden = true;
   questionPrompt.hidden = true;
   nextButton.hidden = true;
 
   window.dispatchEvent(new CustomEvent("alpha-check:start", {
-    detail: { mode, value, difficulty },
+    detail: { mode, value, difficulty, settings: { ...settings } },
   }));
 
   if (mode === "time") {
@@ -574,6 +675,8 @@ function finishSession(reason) {
   playButton.textContent = "Play";
   sessionStatus.hidden = true;
   questionPrompt.hidden = true;
+  questionPrompt.classList.remove("reveal");
+  questionFeedback.hidden = true;
   nextButton.hidden = true;
   gameMessage.classList.remove("countdown");
   gameMessage.classList.add("final-score");
@@ -594,6 +697,7 @@ function finishSession(reason) {
       mode: endedSession.mode,
       value: endedSession.value,
       difficulty: endedSession.difficulty,
+      settings: { ...endedSession.settings },
       score: endedSession.score,
       completed: endedSession.completed,
       message: reason,
@@ -648,6 +752,8 @@ function nextQuestion() {
 modeSelector.addEventListener("change", populateLengthOptions);
 lengthSelector.addEventListener("change", updateCustomField);
 customInput.addEventListener("input", validateSettings);
+difficultySelector.addEventListener("change", updateCustomDifficultyControls);
+bearingLinesInput.addEventListener("change", updateCustomDifficultyControls);
 
 playButton.addEventListener("click", () => {
   if (session) stopSession();
@@ -674,5 +780,6 @@ systemTheme.addEventListener("change", () => {
 
 new ResizeObserver(resizeCanvas).observe(canvas);
 populateLengthOptions();
+updateCustomDifficultyControls();
 applyTheme(loadTheme());
 resizeCanvas();

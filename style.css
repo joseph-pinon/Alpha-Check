@@ -85,6 +85,41 @@ h1 {
   gap: 0.75rem;
 }
 
+.custom-settings {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--canvas-background);
+}
+
+.custom-settings-title {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.checkbox-control {
+  cursor: pointer;
+}
+
+.checkbox-control input {
+  width: 1rem;
+  min-height: 1rem;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.checkbox-control:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 label {
   display: flex;
   align-items: center;
@@ -204,12 +239,27 @@ canvas {
 }
 
 .question-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   top: 1rem;
   padding: 0.65rem 1rem;
   border-radius: 999px;
   font-size: 1.5rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.question-prompt.reveal {
+  max-width: calc(100% - 2rem);
+  border-color: var(--accent);
+  border-radius: 0.625rem;
+  font-size: 1.125rem;
+}
+
+.question-feedback {
+  font-size: 0.9375rem;
+  font-weight: 600;
 }
 
 .game-message {
@@ -245,17 +295,24 @@ canvas {
 }
 
 .next-button {
-  position: absolute;
-  z-index: 2;
-  top: calc(50% + 4.25rem);
-  left: 50%;
+  flex: 0 0 auto;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.75rem;
   pointer-events: auto;
-  transform: translateX(-50%);
+}
+
+@media (max-width: 30rem) {
+  .question-prompt.reveal {
+    flex-wrap: wrap;
+    justify-content: center;
+    white-space: normal;
+  }
 }
 
 @media (max-width: 56rem) {
   .app-header,
-  .controls {
+  .controls,
+  .custom-settings {
     flex-wrap: wrap;
   }
 

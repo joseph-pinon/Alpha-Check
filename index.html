@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Alpha Check</title>
+    <title>ALPHA CHECK</title>
     <link rel="stylesheet" href="style.css" />
     <script src="app.js" defer></script>
   </head>
   <body>
     <header class="app-header">
-      <h1>Alpha Check</h1>
+      <h1>ALPHA CHECK</h1>
 
       <div class="controls">
         <label for="game-mode">
@@ -27,12 +27,38 @@
 
         <label for="difficulty">
           Difficulty
-          <select id="difficulty">
+          <select id="difficulty" aria-controls="custom-difficulty-settings" aria-expanded="false">
             <option value="easy">Easy</option>
             <option value="hard">Hard</option>
             <option value="super-hard">Super Hard</option>
+            <option value="custom">Custom</option>
           </select>
         </label>
+
+        <div id="custom-difficulty-settings" class="custom-settings" role="group" aria-label="Custom difficulty settings" hidden>
+          <span class="custom-settings-title">Custom settings</span>
+          <label class="checkbox-control" for="custom-range-rings">
+            <input id="custom-range-rings" type="checkbox" checked />
+            Range rings
+          </label>
+          <label class="checkbox-control" for="custom-bearing-lines">
+            <input id="custom-bearing-lines" type="checkbox" checked />
+            Bearing lines
+          </label>
+          <label id="bearing-spacing-field" for="bearing-spacing">
+            Line spacing
+            <select id="bearing-spacing">
+              <option value="15">15°</option>
+              <option value="30">30°</option>
+              <option value="45">45°</option>
+              <option value="90" selected>90°</option>
+            </select>
+          </label>
+          <label class="checkbox-control" for="custom-center-bullseye">
+            <input id="custom-center-bullseye" type="checkbox" checked />
+            Center bullseye
+          </label>
+        </div>
 
         <label id="custom-value-field" for="custom-value" hidden>
           <span id="custom-value-label">Seconds</span>
@@ -57,9 +83,12 @@
     <main class="game-area">
       <canvas id="canvas" aria-label="Game canvas"></canvas>
       <div class="canvas-hud" aria-live="polite">
-        <div id="question-prompt" class="question-prompt" hidden></div>
+        <div id="question-prompt" class="question-prompt" hidden>
+          <strong id="question-value"></strong>
+          <span id="question-feedback" class="question-feedback" hidden></span>
+          <button id="next-question" class="next-button" type="button" hidden>Next</button>
+        </div>
         <div id="game-message" class="game-message" hidden></div>
-        <button id="next-question" class="next-button" type="button" hidden>Next</button>
       </div>
     </main>
   </body>
